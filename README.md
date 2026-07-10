@@ -131,3 +131,9 @@ If you are expanding this project in the future, keep these architecture guideli
 * **Adding New Punches**: Add the punch key state inside `Fighter.js` under the states list, and define corresponding hitboxes and durations inside the fighter's frame timers.
 * **Expanding Sound Effects**: Add sound definitions inside `SoundSynth.js` by calling `this.ctx.createOscillator()` and combining with dynamic gain ramps (`linearRampToValueAtTime`).
 * **AI Customization**: Adjust Ryuga's response timings, decision intervals, and weight parameters in `RyugaAI.js`. You can increase the memory buffer size `maxHistorySize` to track longer player pattern histories.
+
+---
+
+## Author 
+
+Lohith G.
