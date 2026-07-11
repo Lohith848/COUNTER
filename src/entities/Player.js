@@ -2,8 +2,8 @@ import Fighter from './Fighter.js';
 import Phaser from 'phaser';
 
 export default class Player extends Fighter {
-  constructor(scene, x, y, texture) {
-    super(scene, x, y, texture, 'Akira');
+  constructor(scene, x, y, texture, stats) {
+    super(scene, x, y, texture, 'Akira', stats);
 
     // Player inputs
     if (scene.input.keyboard) {

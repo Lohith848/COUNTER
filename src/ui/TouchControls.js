@@ -31,15 +31,15 @@ export default class TouchControls {
   buildJoystick() {
     // Outer circle (Base)
     this.baseCircle = this.scene.add.graphics();
-    this.baseCircle.fillStyle(0x1a1a2e, 0.4);
-    this.baseCircle.lineStyle(3, 0x00ff88, 0.6);
+    this.baseCircle.fillStyle(0x0a1622, 0.45);
+    this.baseCircle.lineStyle(3, 0x2f9bff, 0.7);
     this.baseCircle.fillCircle(this.joystickBaseX, this.joystickBaseY, this.joystickLimit);
     this.baseCircle.strokeCircle(this.joystickBaseX, this.joystickBaseY, this.joystickLimit);
     this.container.add(this.baseCircle);
 
     // Inner circle (Knob)
     this.knobCircle = this.scene.add.graphics();
-    this.knobCircle.fillStyle(0x00ff88, 0.7);
+    this.knobCircle.fillStyle(0x2f9bff, 0.8);
     this.knobCircle.fillCircle(this.joystickBaseX, this.joystickBaseY, 24);
     this.container.add(this.knobCircle);
 
@@ -71,7 +71,7 @@ export default class TouchControls {
       { key: 'jab', label: 'JAB', x: rx - 250, y: ry - 170, radius: 28, color: 0x00ff88, downFunc: () => this.player.touchPunch('jab'), upFunc: null },
       { key: 'hook', label: 'HOOK', x: rx - 165, y: ry - 225, radius: 28, color: 0xffaa00, downFunc: () => this.player.touchPunch('hook'), upFunc: null },
       { key: 'uppercut', label: 'UPPR', x: rx - 80, y: ry - 170, radius: 28, color: 0xff0055, downFunc: () => this.player.touchPunch('uppercut'), upFunc: null },
-      { key: 'block', label: 'BLOCK', x: rx - 165, y: ry - 115, radius: 34, color: 0x00ccff, downFunc: () => this.player.touchBlock(true), upFunc: () => this.player.touchBlock(false) },
+      { key: 'block', label: 'BLOCK', x: rx - 165, y: ry - 115, radius: 34, color: 0x2f9bff, downFunc: () => this.player.touchBlock(true), upFunc: () => this.player.touchBlock(false) },
       { key: 'dodge', label: 'SLIP', x: rx - 270, y: ry - 75, radius: 25, color: 0xcc00ff, downFunc: () => this.player.touchDodge(), upFunc: null },
       { key: 'clinch', label: 'CLNC', x: rx - 60, y: ry - 75, radius: 25, color: 0x00ffff, downFunc: () => this.player.touchClinch(), upFunc: null }
     ];
@@ -138,7 +138,7 @@ export default class TouchControls {
       
       // Reset knob to center
       this.knobCircle.clear();
-      this.knobCircle.fillStyle(0x00ff88, 0.7);
+      this.knobCircle.fillStyle(0x2f9bff, 0.7);
       this.knobCircle.fillCircle(this.joystickBaseX, this.joystickBaseY, 24);
       
       // Reset player velocity vector
@@ -169,7 +169,7 @@ export default class TouchControls {
 
     // Redraw Knob
     this.knobCircle.clear();
-    this.knobCircle.fillStyle(0x00ff88, 0.9);
+    this.knobCircle.fillStyle(0x2f9bff, 0.9);
     this.knobCircle.fillCircle(knobX, knobY, 24);
 
     // Set normalized vector to player

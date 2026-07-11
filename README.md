@@ -43,14 +43,17 @@ COUNTER/
 │   │   └── Player.js       # Player class representing Akira (Keyboard/Touch input)
 │   ├── scenes/
 │   │   ├── BootScene.js    # Loading screen & BFS transparency processor
-│   │   ├── FightScene.js   # Match engine (referee loop, scoring, rounds, game states)
+│   │   ├── FightScene.js   # Match engine (best-of-3 rounds, scoring, transitions)
 │   │   ├── MenuScene.js    # Cinematic main menu with animated character previews
-│   │   └── ResultScene.js  # End-of-match screens (Statistics, victory/defeat splash)
+│   │   └── ResultScene.js  # End-of-match screens (round-by-round stats, victory)
 │   ├── ui/
-│   │   ├── HUD.js          # Health bars, stamina bars, round clock, and messages
+│   │   ├── HUD.js          # Segmented health/stamina bars, round pips, combo counter
 │   │   └── TouchControls.js# On-screen buttons for touch devices
+│   ├── match/
+│   │   └── MatchController.js # Best-of-3 round tracking, resets, round results
 │   ├── utils/
-│   │   └── SoundSynth.js   # Procedural Web Audio API sound synthesizer
+│   │   ├── SoundSynth.js   # Procedural Web Audio API sound synthesizer
+│   │   └── statsTracker.js # Single source of truth for punches/accuracy
 │   └── main.js             # Phaser game configuration and entry point
 ├── index.html              # HTML shell
 ├── package.json            # NPM dependencies & scripts

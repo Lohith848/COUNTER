@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { audio } from '../utils/SoundSynth.js';
 
 export default class Fighter extends Phaser.Physics.Arcade.Sprite {
-  constructor(scene, x, y, texture, name) {
+  constructor(scene, x, y, texture, name, stats) {
     super(scene, x, y, texture);
     
     // Add to scene & enable physics
@@ -10,6 +10,12 @@ export default class Fighter extends Phaser.Physics.Arcade.Sprite {
     scene.physics.add.existing(this);
     
     this.fighterName = name;
+
+    // Statistics for this fight. Uses the shared StatsTracker object when provided
+    // so there is a single source of truth for the whole match.
+    this.stats = stats || {
+      thrown: 0, landed: 0, jabs: 0, hooks: 0, uppercuts: 0, blocks: 0, dodges: 0
+    };
     
     // Core attributes
     this.maxHealth = 100;
@@ -28,17 +34,6 @@ export default class Fighter extends Phaser.Physics.Arcade.Sprite {
     this.isKnockedOut = false;
     this.isClinching = false;
     this.blockTimer = null;
-    
-    // Statistics for this fight
-    this.stats = {
-      thrown: 0,
-      landed: 0,
-      jabs: 0,
-      hooks: 0,
-      uppercuts: 0,
-      blocks: 0,
-      dodges: 0
-    };
 
     // Physics setup
     this.setCollideWorldBounds(true);
@@ -386,6 +381,51 @@ export default class Fighter extends Phaser.Physics.Arcade.Sprite {
     
     const baseScale = (this.scene.cameras.main.height * 0.55) / this.height;
     this.setScale(baseScale);
-    if (this.idleTween) this.idleTween.resume();
+    // Restart the idle breathing tween (it may have been stopped by a knockout).
+    if (this.idleTween) this.idleTween.stop();
+    this.idleTween = this.scene.tweens.add({
+      targets: this,
+      scaleY: baseScale * 0.97,
+      scaleX: baseScale * 1.02,
+      yoyo: true,
+      duration: 700,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+  }
+
+  // Victory celebration pose: arms-up bounce used on the result screen.
+  victoryPose() {
+    if (this.isKnockedOut) return;
+    this.scene.tweens.killTweensOf(this);
+    this.unblock();
+    this.angle = 0;
+    this.clearTint();
+    this.alpha = 1;
+
+    const baseScale = (this.scene.cameras.main.height * 0.55) / this.height;
+    if (this.idleTween) this.idleTween.stop();
+
+    // Jump for joy and settle into a bouncing idle.
+    this.scene.tweens.add({
+      targets: this,
+      y: this.y - 40,
+      scaleX: baseScale * 0.95,
+      scaleY: baseScale * 1.08,
+      duration: 260,
+      yoyo: true,
+      ease: 'Quad.easeOut',
+      onComplete: () => {
+        this.setScale(baseScale);
+        this.idleTween = this.scene.tweens.add({
+          targets: this,
+          y: this.y - 12,
+          duration: 420,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut'
+        });
+      }
+    });
   }
 }

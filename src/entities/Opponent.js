@@ -2,8 +2,8 @@ import Fighter from './Fighter.js';
 import Phaser from 'phaser';
 
 export default class Opponent extends Fighter {
-  constructor(scene, x, y, texture) {
-    super(scene, x, y, texture, 'Ryuga');
+  constructor(scene, x, y, texture, stats) {
+    super(scene, x, y, texture, 'Ryuga', stats);
 
     // Face left (towards player Akira)
     this.setFlipX(true);
