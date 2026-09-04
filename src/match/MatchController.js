@@ -1,27 +1,24 @@
-// Tracks the Best-of-3 match structure:
-//   - each round is won by KO or by higher health % at time-out
-//   - first fighter to win 2 rounds wins the match (2-0, or full 3 rounds 2-1)
-//   - between rounds, health/stamina are reset (with optional carry-over)
-//   - records a round-by-round result log for the result screen
+/**
+ * MatchController — Tracks the Best-of-3 match structure:
+ * - Each round is won by KO or higher health % at time-out.
+ * - First fighter to win 2 rounds wins the match.
+ * - Resets health/stamina and fighter states between rounds.
+ * - Records round result history.
+ */
 
 export default class MatchController {
   constructor(scene, options = {}) {
     this.scene = scene;
 
-    this.roundsToWin = options.roundsToWin ?? 2;   // best-of-3
+    this.roundsToWin = options.roundsToWin ?? 2;
     this.maxRounds = options.maxRounds ?? 3;
-
-    // Fraction of max health a fighter starts each round with.
-    // 1.0 = full reset (rounds independent). Use e.g. 0.7 to "wear them down".
     this.roundStartHealthFraction = options.roundStartHealthFraction ?? 1.0;
 
     this.currentRound = 1;
     this.roundWins = { player: 0, opponent: 0 };
-    this.roundResults = []; // [{ round, winner:'Akira'|'Ryuga', method:'KO'|'DECISION' }]
+    this.roundResults = [];
   }
 
-  // Award the just-finished round to a fighter and record the winning method.
-  // Returns true if this result ends the match.
   recordRoundResult(winner, method) {
     const key = winner === 'Akira' ? 'player' : 'opponent';
     this.roundWins[key]++;
@@ -36,17 +33,14 @@ export default class MatchController {
     return false;
   }
 
-  // Advance to the next round. Returns the new round number.
   advanceRound() {
     this.currentRound++;
     return this.currentRound;
   }
 
-  // Final match winner ('Akira' | 'Ryuga'). Resolves a 1-1-1 finish by round wins.
   getMatchWinner() {
     if (this.roundWins.player > this.roundWins.opponent) return 'Akira';
     if (this.roundWins.opponent > this.roundWins.player) return 'Ryuga';
-    // Tie (e.g. 1-1 with a draw third) — fall back to aggregate landed punches.
     const stats = this.scene.stats;
     if (stats) {
       return stats.player.landed >= stats.opponent.landed ? 'Akira' : 'Ryuga';
@@ -54,7 +48,6 @@ export default class MatchController {
     return 'Akira';
   }
 
-  // Reset a fighter's health/stamina for the start of a new round.
   resetFighterForRound(fighter) {
     fighter.health = Math.round(fighter.maxHealth * this.roundStartHealthFraction);
     fighter.stamina = fighter.maxStamina;
@@ -65,8 +58,14 @@ export default class MatchController {
     fighter.isStaggered = false;
     fighter.isKnockedOut = false;
     fighter.isClinching = false;
-    fighter.angle = 0;
-    fighter.alpha = 1;
-    fighter.clearTint();
+    fighter.isSpecialActive = false;
+
+    if (fighter.boxer) {
+      fighter.boxer.clearFlash();
+      fighter.boxer.setOpacity(1);
+    }
+    if (typeof fighter.clearTint === 'function') {
+      fighter.clearTint();
+    }
   }
 }

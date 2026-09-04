@@ -1,66 +1,64 @@
+/**
+ * RyugaAI — Adaptive AI Controller for Ryuga.
+ * Evaluates distances, player attack history, defensive turtling, and super meter status.
+ * Dynamically reacts to jabs, hooks, and uppercuts with blocks, slip dodges, counter-strikes,
+ * and AI super moves in higher difficulty rounds.
+ */
+
 import Phaser from 'phaser';
 
 export default class RyugaAI {
   constructor(opponent, player) {
-    this.opponent = opponent; // Ryuga entity
-    this.player = player;     // Akira entity
-    this.playerHistory = [];  // Rolling buffer of player's last 15 actions
+    this.opponent = opponent;
+    this.player = player;
+    this.playerHistory = [];
     this.maxHistorySize = 15;
-    
-    // AI decision tick control
+
     this.lastDecisionTime = 0;
-    this.decisionInterval = 600; // ms between decisions (will scale by round)
-    
-    this.state = 'IDLE'; // IDLE, APPROACH, RETREAT, BLOCK, DODGE, ATTACK, CLINCH
-    
-    // Adaptive weights (modifiers to Ryuga's behavior)
+    this.decisionInterval = 500;
+    this.state = 'IDLE';
+
     this.adaptation = {
-      blockJabRate: 0.15,      // Base block rate vs Jab
-      dodgeHookRate: 0.15,     // Base dodge rate vs Hook
-      blockUppercutRate: 0.15, // Base block rate vs Uppercut
-      clinchOnBlockRate: 0.1,  // Base clinch rate if player is blocking
-      aggression: 0.4          // Probability of approaching & attacking
+      blockJabRate: 0.2,
+      dodgeHookRate: 0.2,
+      blockUppercutRate: 0.2,
+      clinchOnBlockRate: 0.15,
+      aggression: 0.45,
+      specialRate: 0.7
     };
-    
-    this.difficultyFactor = 1.0; // Scales reaction speed/stats based on round
+
+    this.difficultyFactor = 1.0;
   }
 
   setDifficulty(round) {
-    // Round 1: Apprentice - slow reaction, low adaptation
-    // Round 2: Adaptive - moderate reaction, high adaptation
-    // Round 3: Champion - fast reaction, aggressive adaptation
     if (round === 1) {
-      this.decisionInterval = 650;
-      this.difficultyFactor = 0.8;
+      this.decisionInterval = 580;
+      this.difficultyFactor = 0.85;
+      this.adaptation.specialRate = 0.5;
     } else if (round === 2) {
-      this.decisionInterval = 400;
-      this.difficultyFactor = 1.2;
+      this.decisionInterval = 380;
+      this.difficultyFactor = 1.25;
+      this.adaptation.specialRate = 0.8;
     } else {
-      this.decisionInterval = 250;
-      this.difficultyFactor = 1.6;
+      // Round 3: Champion beast mode
+      this.decisionInterval = 240;
+      this.difficultyFactor = 1.65;
+      this.adaptation.specialRate = 0.95;
     }
   }
 
   recordPlayerAction(action) {
-    // Record player actions (jab, hook, uppercut, block, dodge, clinch, move)
     this.playerHistory.push(action);
     if (this.playerHistory.length > this.maxHistorySize) {
       this.playerHistory.shift();
     }
-    
     this.adaptToPatterns();
   }
 
   adaptToPatterns() {
-    if (this.playerHistory.length < 5) return; // Need a small sample size first
+    if (this.playerHistory.length < 4) return;
 
-    // Count action frequencies in history
-    let jabCount = 0;
-    let hookCount = 0;
-    let uppercutCount = 0;
-    let blockCount = 0;
-    let dodgeCount = 0;
-
+    let jabCount = 0, hookCount = 0, uppercutCount = 0, blockCount = 0, dodgeCount = 0;
     this.playerHistory.forEach(act => {
       if (act === 'jab') jabCount++;
       else if (act === 'hook') hookCount++;
@@ -69,32 +67,29 @@ export default class RyugaAI {
       else if (act === 'dodge') dodgeCount++;
     });
 
-    const totalActions = this.playerHistory.length;
-    const jabRatio = jabCount / totalActions;
-    const hookRatio = hookCount / totalActions;
-    const uppercutRatio = uppercutCount / totalActions;
-    const blockRatio = blockCount / totalActions;
-    const dodgeRatio = dodgeCount / totalActions;
+    const total = this.playerHistory.length;
+    const jabRatio = jabCount / total;
+    const hookRatio = hookCount / total;
+    const uppercutRatio = uppercutCount / total;
+    const blockRatio = blockCount / total;
+    const dodgeRatio = dodgeCount / total;
 
-    // Reset base rates, then apply modifiers
-    this.adaptation.blockJabRate = 0.15 + (jabRatio * 0.65 * this.difficultyFactor);
-    this.adaptation.dodgeHookRate = 0.15 + (hookRatio * 0.65 * this.difficultyFactor);
-    this.adaptation.blockUppercutRate = 0.15 + (uppercutRatio * 0.65 * this.difficultyFactor);
-    this.adaptation.clinchOnBlockRate = 0.10 + (blockRatio * 0.70 * this.difficultyFactor);
-    
-    // If player dodges too much, Ryuga becomes more patient (drops aggression)
+    this.adaptation.blockJabRate = 0.15 + (jabRatio * 0.7 * this.difficultyFactor);
+    this.adaptation.dodgeHookRate = 0.15 + (hookRatio * 0.7 * this.difficultyFactor);
+    this.adaptation.blockUppercutRate = 0.15 + (uppercutRatio * 0.7 * this.difficultyFactor);
+    this.adaptation.clinchOnBlockRate = 0.10 + (blockRatio * 0.75 * this.difficultyFactor);
+
     if (dodgeRatio > 0.35) {
-      this.adaptation.aggression = 0.25; // Play patient, wait for player dodge recovery
+      this.adaptation.aggression = 0.3; // Patient counter-punching
     } else {
-      this.adaptation.aggression = 0.4 + (this.difficultyFactor * 0.15); // Pressure the player
+      this.adaptation.aggression = 0.45 + (this.difficultyFactor * 0.15);
     }
   }
 
   update(time, delta) {
     if (this.opponent.isKnockedOut || this.player.isKnockedOut) return;
-    if (this.opponent.isStaggered) return;
+    if (this.opponent.isStaggered || this.opponent.isSpecialActive) return;
 
-    // Check if it's time for a new decision
     if (time - this.lastDecisionTime < this.decisionInterval) return;
     this.lastDecisionTime = time;
 
@@ -111,13 +106,21 @@ export default class RyugaAI {
     const playerAttackType = this.player.currentAttackType;
     const playerIsBlocking = this.player.isBlocking;
 
-    // 1. Reactive defenses (if player is currently initiating an attack)
-    if (playerIsAttacking && dist < 160) {
+    // 1. AI Super Special Attack Trigger
+    if (this.opponent.superMeter >= 100 && dist < 320 && Math.random() < this.adaptation.specialRate) {
+      this.opponent.specialAttack();
+      this.state = 'SPECIAL';
+      return;
+    }
+
+    // 2. Reactive Defenses against incoming punches
+    if (playerIsAttacking && dist < 300) {
       const rand = Math.random();
-      
+
       if (playerAttackType === 'jab' && rand < this.adaptation.blockJabRate) {
-        this.opponent.block(500); // Block for 500ms
+        this.opponent.block();
         this.state = 'BLOCK';
+        this.opponent.scene.time.delayedCall(450, () => this.opponent.unblock());
         return;
       }
       if (playerAttackType === 'hook' && rand < this.adaptation.dodgeHookRate) {
@@ -126,56 +129,49 @@ export default class RyugaAI {
         return;
       }
       if (playerAttackType === 'uppercut' && rand < this.adaptation.blockUppercutRate) {
-        this.opponent.block(700);
+        this.opponent.block();
         this.state = 'BLOCK';
+        this.opponent.scene.time.delayedCall(600, () => this.opponent.unblock());
         return;
       }
     }
 
-    // 2. Tackle / Clinch if player is turtling
-    if (playerIsBlocking && dist < 140 && Math.random() < this.adaptation.clinchOnBlockRate) {
+    // 3. Clinch if player is holding block
+    if (playerIsBlocking && dist < 250 && Math.random() < this.adaptation.clinchOnBlockRate) {
       this.opponent.clinch();
       this.state = 'CLINCH';
       return;
     }
 
-    // 3. Proactive actions based on distance
-    const reach = 130; // Attack range
-    
-    if (dist > reach + 50) {
-      // Too far: Approach player
+    // 4. Combat Range Navigation & Attacks
+    if (dist > 300) {
       this.state = 'APPROACH';
       this.approachPlayer();
-    } else if (dist <= reach && dist > 50) {
-      // In range: Choose to attack, block, or retreat
+    } else if (dist > 100) {
       const roll = Math.random();
 
       if (roll < this.adaptation.aggression) {
-        // Choose attack type
-        const attackRoll = Math.random();
         this.state = 'ATTACK';
-        if (attackRoll < 0.5) {
+        const attackRoll = Math.random();
+        if (attackRoll < 0.45) {
           this.opponent.punch('jab');
         } else if (attackRoll < 0.8) {
           this.opponent.punch('hook');
         } else {
           this.opponent.punch('uppercut');
         }
-      } else if (roll < this.adaptation.aggression + 0.2) {
-        // Back off to recover stamina
+      } else if (roll < this.adaptation.aggression + 0.22) {
         this.state = 'RETREAT';
         this.retreatFromPlayer();
-      } else if (roll < this.adaptation.aggression + 0.35) {
-        // Defensive pose
+      } else if (roll < this.adaptation.aggression + 0.38) {
         this.state = 'BLOCK';
-        this.opponent.block(600);
+        this.opponent.block();
+        this.opponent.scene.time.delayedCall(500, () => this.opponent.unblock());
       } else {
-        // Idle bobbing
         this.state = 'IDLE';
-        this.opponent.stopMovement();
+        this.opponent.setVelocity(0, 0);
       }
     } else {
-      // Too close (e.g. clinching or overlapping): step back
       this.state = 'RETREAT';
       this.retreatFromPlayer();
     }
@@ -186,7 +182,6 @@ export default class RyugaAI {
       this.opponent.x, this.opponent.y,
       this.player.x, this.player.y
     );
-    // Move towards player with some variance
     const vx = Math.cos(angle);
     const vy = Math.sin(angle);
     this.opponent.move(vx, vy);
@@ -197,7 +192,6 @@ export default class RyugaAI {
       this.opponent.x, this.opponent.y,
       this.player.x, this.player.y
     );
-    // Move away from player
     const vx = -Math.cos(angle);
     const vy = -Math.sin(angle);
     this.opponent.move(vx, vy);

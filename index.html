@@ -4,8 +4,8 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <title>Ring of Dominance — Akira vs Ryuga 2D Boxing</title>
-    <meta name="description" content="An adaptive 2D boxing fighting game. Play as Akira and fight Ryuga, the AI-controlled adaptive opponent that learns your patterns." />
+    <title>Ring of Dominance — Akira vs Ryuga 3D Boxing</title>
+    <meta name="description" content="An adaptive 3D boxing fighting game. Play as Akira and fight Ryuga, the AI-controlled adaptive opponent that learns your patterns." />
     <!-- Google Fonts for premium retro-modern look -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -57,14 +57,33 @@
         opacity: 0.4;
       }
 
-      #app {
+      /* Layers: the Three.js 3D ring renders BEHIND the (transparent) Phaser
+         canvas which carries the HUD, menus and 2D effects. Both canvases
+         share the same internal 1280x720 coordinate space so they align. */
+      #three-layer {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+      }
+
+      #three-layer canvas {
+        position: absolute;
+        inset: 0;
         width: 100%;
         height: 100%;
+        display: block;
+      }
+
+      #app {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
       }
     </style>
   </head>
   <body>
     <div id="game-container">
+      <div id="three-layer"></div>
       <div id="app"></div>
     </div>
     <script type="module" src="/src/main.js"></script>

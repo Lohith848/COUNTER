@@ -5,83 +5,110 @@ This document preserves the context, architecture, design decisions, and status 
 ---
 
 ## 🔍 Context & Concept
-The project is a 2D single-player boxing game titled **Ring of Dominance**, designed to run on desktop and mobile browsers.
-* **Player (Akira)**: Controlled by the user via keyboard or on-screen touch buttons. Akira can move left/right, throw a Jab, Hook, or Uppercut, Block, Dodge, or Clinch.
-* **Opponent (Ryuga)**: Controlled by an adaptive AI that monitors the player's fight patterns and dynamically counter-strategies.
-* **Match Loop (Best-of-3)**: Each round is 90 seconds and is won independently by either **Knockout** (opponent health hits 0) or **Time-out Decision** (higher health % when the clock hits 0). The first fighter to win **2 rounds** wins the match (2-0 ends early; otherwise all 3 rounds are played). Between rounds, health/stamina reset (configurable carry-over in `MatchController`).
+The project is a 1-vs-1 boxing game titled **Ring of Dominance**, designed to run on desktop and mobile browsers.
+* **Player (Akira)**: Controlled via keyboard (WASD move, J/K/L punches, Space block, Shift+Space dodge, E clinch) or on-screen touch buttons.
+* **Opponent (Ryuga)**: Controlled by an adaptive AI (`src/ai/RyugaAI.js`) that watches the player's fight patterns and counter-strategizes.
+* **Match Loop (Best-of-3)**: Each round is 90 seconds, won by **Knockout** (health hits 0) or **Decision** (higher health % at the bell). First to 2 round wins takes the match. Health/stamina reset between rounds via `MatchController`.
+
+### What changed (3D conversion)
+The fighters are **no longer flat images**. They are procedural **3D rigged boxers** rendered by Three.js in a layer behind a transparent Phaser canvas:
+
+| Layer | Engine | Responsibility |
+| :--- | :--- | :--- |
+| `#three-layer` | **Three.js** (r185) | 3D ring, fighters with real joints, lights, shadows, sparks, camera |
+| `#app` (transparent Phaser canvas) | **Phaser 4.2.1** | HUD bars, menus, round cards, floating text, touch UI, input, audio, match flow |
+| Logic | Phaser-agnostic modules | AI (`RyugaAI`), `MatchController`, `StatsTracker`, `SoundSynth` — unchanged |
 
 ---
 
 ## 🏗️ Technical Stack & Architecture
 
-1. **Phaser 3 (v3.87.0)**: Used as the game engine for rendering, animations, physics (Arcade Physics), and scene management.
-2. **Vite**: Modern front-end toolchain for fast builds and hot module replacement.
-3. **Web Audio API (Procedural Audio)**: 
-   - Instead of static MP3/WAV assets, all sound effects (hits, swooshes, bells, referee voice count) are procedurally generated in code via oscillators, filter nodes, and envelopes.
-   - Saves file size, avoids asset loading latency, and allows dynamic variation.
-4. **HTML5 Canvas BFS Transparency**:
-   - The characters' raw assets (`AKIRA.png` and `RYUGA.png`) originally had solid white backgrounds.
-   - At startup, the game draws these onto an offscreen canvas and runs a Breadth-First Search (BFS) starting from the edges, replacing white pixels with transparent ones. This keeps interior white parts (e.g., logos, eyes, or white shorts) intact.
+1. **Phaser 4.2.1**: Scene management, 2D HUD/UI overlays, input, tween/clock for round cards & floaty text. Config uses `transparent: true` + zero-alpha background so the 3D layer shows through.
+2. **Three.js ^0.185**: WebGL renderer inside `#three-layer` (see `index.html`). Both layers share a logical 1280×720 space: `worldX = screenX - 640`, `worldZ = screenY - 560`, fighters stand on the floor (worldY = 0).
+3. **Procedural 3D characters** — `src/three3d/Boxer3D.js`:
+   - Humanoid built from primitive boxes/spheres with named pivot groups:
+     `shoulder/elbow/wrist` per arm, `hip/knee/ankle` per leg, plus `torso`,
+     `head`, `hips`. Right limbs are authored once (they need no mirroring —
+     forward swings use the symmetric lateral z-axis; per-side signs handle
+     lateral spreads).
+   - Joint rotation conventions: `rotation.z` swings a hanging limb forward
+     (+x) when positive; knee flexion is negative-z; torso lean forward is
+     negative-z torso rotation. Guard stance is the neutral pose; every
+     action (jab/hook/uppercut/block/dodge/clinch/stagger/KO/victory) sets
+     joint targets that ease in with exponential smoothing.
+   - Facing is a yaw on `body`; knockdowns roll `pose` (inner group) so a
+     mirrored fighter still falls toward his own corner.
+4. **Image → 3D step**: `BootScene` BFS-cleans the white background of
+   `AKIRA.png`/`RYUGA.png`; `src/three3d/faceCrop.js` crops the head region
+   and maps it onto the rig's skull, angled toward the camera.
+5. **Entity layer** — `src/three3d/Fighter3D.js` (base), `Player3D.js`,
+   `Opponent3D.js`: expose the same combat API the old sprite fighters had,
+   so `HUD`, `RyugaAI`, `MatchController` and `FightScene` logic mostly
+   carried over. `x/y` stay in classic ring px; `facing` (±1) replaces
+   `flipX`. Combat ranges were retuned to measured 3D reach
+   (`PUNCH_RANGE` in FightScene; AI thresholds in RyugaAI).
+6. **Web Audio API**: all sound effects are synthesized in code
+   (`src/utils/SoundSynth.js`) — no audio files.
+7. **img2threejs vendored at `tools/img2threejs`**: reference pipeline for
+   turning the character images into animation-ready procedural models
+   (Claude Code / Codex agent skill). Current rigs already follow the same
+   code-only, pivot-exposed philosophy; a future pass can adopt its
+   generated factories directly inside `Boxer3D`.
 
 ---
 
-## 🧠 Core System Design Details
+## 🧠 Core Systems (unchanged behaviour)
 
-### 1. Fighter FSM (Finite State Machine)
-The state of both characters is managed in `src/entities/Fighter.js` with the following states:
-* `IDLE`, `WALK`, `ATTACK`, `BLOCK`, `DODGE`, `HIT`, `KNOCKDOWN`
-Each state restricts certain actions (e.g., you cannot walk or attack while in `KNOCKDOWN` or `HIT` stun).
+### 1. Fighter state & damage (`Fighter3D.js` — was `Fighter.js`)
+States: `IDLE/WALK/ATTACK/BLOCK/DODGE/STAGGER/KNOCKDOWN/CLINCH`. Rules are
+preserved: no actions while stunned/KO'd, blocks mitigate ~90%, dodges give
+brief immunity, stamina gates actions, health at 0 → `knockout()` →
+referee count → round to the standing fighter.
 
-### 2. Adaptive AI (Ryuga)
-In `src/ai/RyugaAI.js`, Ryuga doesn't just punch randomly. He has:
-* **Rolling Action Buffer**: Stores the player's last 15 actions.
-* **Frequency Tuning**: If the buffer contains high ratio of Jabs, `adaptation.blockJabRate` rises. If there is a high ratio of Hooks, `adaptation.dodgeHookRate` rises.
-* **Clinch Trigger**: If the player is constantly blocking, Ryuga detects it and clinches to break the guard.
-* **Round Scaling**: Each round, the AI's decision tick interval decreases (making him react faster), and stats like speed scale up.
+### 2. Adaptive AI (Ryuga) — `src/ai/RyugaAI.js`
+Rolling 15-action buffer of the player; jab-spam raises `blockJabRate`,
+hook-spam raises `dodgeHookRate`, uppercut-spam raises `blockUppercutRate`,
+block-turtling triggers clinch attempts; round difficulty scales reaction
+time & aggression. Distances are tuned for the 3D rigs (engage band
+~90..300 px centre-to-centre).
 
----
-
-### 3. Match Flow (Best-of-3) — `src/match/MatchController.js`
-Owns the round lifecycle so `FightScene` stays a thin coordinator:
-* Tracks `roundWins` (player/opponent) and a `roundResults` log `[{ round, winner, method }]`.
-* `recordRoundResult(winner, method)` awards the just-finished round (KO or DECISION) and returns whether the match is over (first to `roundsToWin`, or all `maxRounds` played).
-* `resetFighterForRound(fighter)` re-applies health (full or partial via `roundStartHealthFraction`) and stamina between rounds.
-* `getMatchWinner()` resolves the overall winner by round wins (falling back to aggregate landed punches).
+### 3. Match flow — `src/match/MatchController.js`
+Round wins/results log, health reset per round (`roundStartHealthFraction`),
+KO/DECISION round resolution, best-of-3 end conditions, fallback to
+aggregate landed punches on ties.
 
 ### 4. Statistics — `src/utils/statsTracker.js`
-Single source of truth for `thrown / landed / jabs / hooks / uppercuts / blocks / dodges` for both fighters. Both `Fighter` instances reference the shared `player` / `opponent` sub-objects, so there is exactly one stats object for the match. `accuracy()` is clamped to 100% to guarantee a valid percentage on the result screen.
+Single source of truth for thrown/landed/jabs/hooks/uppercuts/blocks/dodges,
+shared by both fighters; accuracy clamped ≤ 100 % for the result screen.
 
-## 🔮 Future Feature Ideas & Implementation Guidance
+---
 
-If you are returning to this codebase to add new features, follow these implementation paths:
+## 📐 Coordinate cheat sheet (3D world)
 
-### 1. Adding a Stamina / Fatigue System for Punching
-* **Currently**: Stamina is displayed and drains on blocks/hits, but punches don't drain it.
-* **To Implement**:
-  - In `src/entities/Fighter.js`, subtract stamina inside `performPunch(type)`.
-  - Check if stamina is above a threshold (e.g., 10) before allowing a punch. If too low, trigger a tired state or slower punches.
-
-### 2. Adding Special Moves / Super Meter
-* **Concept**: A meter that fills as you land punches, allowing a special "Super Punch".
-* **To Implement**:
-  - Add a `superMeter` variable to `Fighter.js`.
-  - Draw a Super Bar overlay in `src/ui/HUD.js`.
-  - Listen for a key (e.g., `S` or a mobile HUD button) that transitions the fighter into a high-damage special attack animation.
-
-### 3. Adding New Opponents / Match Select
-* **Concept**: Fighting different characters instead of only Ryuga.
-* **To Implement**:
-  - Add new character asset configurations in `BootScene.js` and `MenuScene.js`.
-  - Create specialized AI profiles (e.g., `KenjiAI.js`, `IvanAI.js`) with different adaptation styles (e.g., aggressive vs. defensive).
-  - Update `FightScene.js` to initialize the selected opponent's sprite key and AI controller.
+- Classic 2D plane: x ∈ [100, 1180], y ∈ [445, 670] (movement bounds).
+- 3D: `wx = x - 640`, `wz = y - 560`, up = `wy`; camera at
+  `(0, 380, 850)` looking at `(0, 250, -60)` (fov 46).
+- Screen-space helpers for HUD-anchored FX: `Fight3D.toScreen(worldPos)`
+  and `Fight3D.toWorld(x2d, y2d, height)`.
+- Ring ropes/posts at ±760/±430 world px; mat roughly x ±690, z ±300.
 
 ---
 
 ## 🚦 Current Status
-* **Updated**: Character sprites have been successfully replaced with new high-resolution images (`assets/AKIRA.png` and `assets/RYUGA.png`).
-* **Resolved**: Edge transparency BFS flood-fill works perfectly on the new sprites without cutting out internal white details.
-* **Match Structure**: Best-of-3 rounds implemented via `MatchController` — KO or time-out decision per round, first to 2 round wins takes the match, animated "ROUND N / 3-2-1-FIGHT" intro cards, and a top-center 3-pip round indicator.
-* **HUD Overhaul**: Segmented health meters with green→yellow→red color transition and a white "damage trail", a thinner blue stamina bar, upright per-fighter name plates, and a bold combo counter with a scale-pop animation.
-* **Result Screen**: Round-by-round breakdown (e.g. `R1 Akira (KO) • R2 Ryuga (DEC)`), clamped accuracy, and a celebratory victory animation on the winner portrait.
-* **Stats**: Single `StatsTracker` source of truth; landed jab/hook/uppercut counts are now recorded on connection.
-* **Build/Dev**: Tested and running stably on Vite dev server on port `3000`.
+* Fighters are 3D rigs with real hand/leg movement; all moves verified
+  numerically (glove reach measured ~245 px from centre at full jab).
+* Round flow, HUD health bars (damage trail), KO-at-zero-health, time-out
+  decisions, result screen and AI all functional in the 3D build.
+* Build (`npm run build`) passes; dev server runs on port 3000.
+
+## 🔮 Future Feature Ideas
+* **Body/head hit zones** — branch damage by which glove-part connects.
+* **Stamina drain on punches** + tired (slower) state (noted in original
+  design, still unimplemented).
+* **Special / super meter** (noted in original design).
+* **New opponents** — add `BotX` rig palettes in `Boxer3D` and AI profiles
+  derived from `RyugaAI`.
+* **img2threejs factories** — swap `Boxer3D` internals with skill-generated
+  model factories for higher-fidelity fighters (see `tools/img2threejs`).
+* **Broadcast polish** — ring-card walkouts, corner men, slow-mo replay on
+  KO, crowd particles.

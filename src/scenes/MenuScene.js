@@ -1,3 +1,12 @@
+/**
+ * MenuScene — 90s Retro Arcade Title Screen.
+ * Features:
+ * - Glowing arcade neon title and animated background.
+ * - Interactive Start Fight button with audio stings.
+ * - Fight Controls Breakdown (PC & Mobile layouts).
+ * - Sound toggle button.
+ */
+
 import Phaser from 'phaser';
 import { audio } from '../utils/SoundSynth.js';
 
@@ -12,133 +21,129 @@ export default class MenuScene extends Phaser.Scene {
     const width = this.cameras.main.width;
     const height = this.cameras.main.height;
 
-    // 1. Ring Background (Darkened/Blurred for UI readability)
-    const bg = this.add.image(width / 2, height / 2, 'ring');
-    bg.setDisplaySize(width, height);
-    bg.setTint(0x444455); // Darken the background
+    // 1. Procedural 90s Retro Arcade Stadium Background
+    const bg = this.add.graphics();
+    bg.fillGradientStyle(0x06090f, 0x06090f, 0x121a28, 0x121a28, 1);
+    bg.fillRect(0, 0, width, height);
 
-    // 2. Faceoff Sprites (Slide in from sides)
-    const akiraFace = this.add.image(-200, height / 2 + 50, 'akira_clean');
-    akiraFace.setOrigin(0.5, 0.5);
-    // Scale appropriately based on raw dimensions
-    const scaleFactor = (height * 0.75) / akiraFace.height;
-    akiraFace.setScale(scaleFactor);
+    // Subtle arena grid floor
+    const grid = this.add.graphics();
+    grid.lineStyle(1, 0x66fcf1, 0.08);
+    for (let x = 0; x < width; x += 40) {
+      grid.lineBetween(x, 0, x, height);
+    }
+    for (let y = 0; y < height; y += 40) {
+      grid.lineBetween(0, y, width, y);
+    }
 
-    const ryugaFace = this.add.image(width + 200, height / 2 + 50, 'ryuga_clean');
-    ryugaFace.setOrigin(0.5, 0.5);
-    ryugaFace.setScale(scaleFactor);
-    ryugaFace.setFlipX(true); // Face left
-
-    // Slide in tween
-    this.tweens.add({
-      targets: akiraFace,
-      x: width * 0.22,
-      duration: 800,
-      ease: 'Power2'
-    });
-    this.tweens.add({
-      targets: ryugaFace,
-      x: width * 0.78,
-      duration: 800,
-      ease: 'Power2'
-    });
-
-    // 3. Title Text: "RING OF" + "DOMINANCE"
-    const titleTop = this.add.text(width / 2, 70, 'RING OF', {
+    // 2. 90s Retro Arcade Title
+    const subTitle = this.add.text(width / 2, 75, '★ 90s RETRO 3D ARCADE ★', {
       fontFamily: '"Press Start 2P"',
-      fontSize: '24px',
-      color: '#ffffff',
-      shadow: { color: '#ff0055', blur: 10, stroke: true, fill: true }
+      fontSize: '14px',
+      color: '#66fcf1',
+      stroke: '#000000',
+      strokeThickness: 4
     }).setOrigin(0.5);
 
-    const titleBottom = this.add.text(width / 2, 120, 'DOMINANCE', {
+    const titleTop = this.add.text(width / 2, 120, 'RING OF', {
       fontFamily: '"Press Start 2P"',
-      fontSize: '44px',
+      fontSize: '28px',
+      color: '#ffffff',
+      stroke: '#000000',
+      strokeThickness: 6,
+      shadow: { color: '#00ff88', blur: 12, fill: true, stroke: true }
+    }).setOrigin(0.5);
+
+    const titleBottom = this.add.text(width / 2, 175, 'DOMINANCE', {
+      fontFamily: '"Press Start 2P"',
+      fontSize: '48px',
       color: '#ff0055',
       stroke: '#000000',
       strokeThickness: 8,
-      shadow: { color: '#00ff88', blur: 15, stroke: true, fill: true }
+      shadow: { color: '#ff0055', blur: 20, fill: true, stroke: true }
     }).setOrigin(0.5);
 
-    // Bounce title slightly
     this.tweens.add({
       targets: [titleTop, titleBottom],
-      y: '+=8',
-      duration: 1500,
+      y: '+=6',
+      duration: 1200,
       yoyo: true,
       repeat: -1,
       ease: 'Sine.easeInOut'
     });
 
-    // 4. Center Panels: CONTROLS
-    const controlsPanel = this.add.graphics();
-    controlsPanel.fillStyle(0x0b0c10, 0.85);
-    controlsPanel.lineStyle(2, 0xff0055, 0.6);
-    controlsPanel.fillRoundedRect(width / 2 - 250, 190, 500, 240, 12);
-    controlsPanel.strokeRoundedRect(width / 2 - 250, 190, 500, 240, 12);
+    // 3. Fight Controls Guide Panel
+    const panelX = width / 2 - 280;
+    const panelY = 230;
+    const panelW = 560;
+    const panelH = 260;
 
-    this.add.text(width / 2, 215, 'FIGHT CONTROLS', {
+    const panel = this.add.graphics();
+    panel.fillStyle(0x0a0e16, 0.9);
+    panel.lineStyle(2, 0x66fcf1, 0.7);
+    panel.fillRoundedRect(panelX, panelY, panelW, panelH, 10);
+    panel.strokeRoundedRect(panelX, panelY, panelW, panelH, 10);
+
+    this.add.text(width / 2, panelY + 24, 'CHAMPIONSHIP CONTROLS', {
       fontFamily: '"Press Start 2P"',
-      fontSize: '14px',
+      fontSize: '12px',
       color: '#00ff88'
     }).setOrigin(0.5);
 
-    const controlList = [
-      'WASD : Move / Position in Ring',
-      'J : Fast Jab (Low Dmg) | K : Hook (Med Dmg)',
-      'L : Uppercut (High Dmg) | SPACE : Block/Guard',
-      'Shift+SPACE : Dodge Slip | E : Clinch Push',
-      '* Mobile: Left Joystick & Right Action Buttons'
+    const controlLines = [
+      'WASD / Arrows  : 360° Ring Footwork & Advance',
+      'J : Snapping Jab   | K : Power Hook',
+      'L : Uppercut Drive | U / I : SUPER SPECIAL MOVE',
+      'SPACE : High Guard | SHIFT : Slip & Roll Dodge',
+      'E : Clinch & Break | ESC : Pause Match',
+      '📱 Mobile : Left Virtual Joystick + Right Action Diamond'
     ];
 
-    controlList.forEach((text, i) => {
-      this.add.text(width / 2, 260 + i * 28, text, {
+    controlLines.forEach((text, i) => {
+      this.add.text(width / 2, panelY + 62 + i * 28, text, {
         fontFamily: '"Outfit"',
         fontSize: '15px',
-        color: '#c5c6c7',
-        fontWeight: '600'
+        fontWeight: '700',
+        color: i === 2 ? '#ffcc00' : '#c5c6c7'
       }).setOrigin(0.5);
     });
 
-    // 5. Start Button
+    // 4. Start Button
+    const btnW = 280;
+    const btnH = 58;
+    const btnX = width / 2;
+    const btnY = 540;
+
     const startBtnBg = this.add.graphics();
     startBtnBg.fillStyle(0xff0055, 1);
-    startBtnBg.fillRoundedRect(width / 2 - 120, 460, 240, 55, 10);
-    
-    // Add glow outline
+    startBtnBg.fillRoundedRect(btnX - btnW / 2, btnY - btnH / 2, btnW, btnH, 8);
+
     const startGlow = this.add.graphics();
     startGlow.lineStyle(3, 0x00ff88, 1);
-    startGlow.strokeRoundedRect(width / 2 - 122, 458, 244, 59, 11);
-    startGlow.setAlpha(0.5);
-    
+    startGlow.strokeRoundedRect(btnX - btnW / 2 - 2, btnY - btnH / 2 - 2, btnW + 4, btnH + 4, 10);
+
     this.tweens.add({
       targets: startGlow,
-      alpha: 1,
-      scaleX: 1.02,
-      scaleY: 1.05,
-      x: -width * 0.01,
-      y: -5,
-      duration: 1000,
+      alpha: { from: 0.3, to: 1.0 },
+      duration: 800,
       yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut'
+      repeat: -1
     });
 
-    const startText = this.add.text(width / 2, 487, 'START FIGHT', {
+    const startText = this.add.text(btnX, btnY, 'INSERT COIN / START', {
       fontFamily: '"Press Start 2P"',
-      fontSize: '16px',
+      fontSize: '13px',
       color: '#ffffff',
       fontWeight: 'bold'
     }).setOrigin(0.5);
 
-    // Make button interactive
-    const startZone = this.add.zone(width / 2, 487, 240, 55).setOrigin(0.5);
+    const startZone = this.add.zone(btnX, btnY, btnW, btnH).setOrigin(0.5);
     startZone.setInteractive({ useHandCursor: true });
 
     startZone.on('pointerover', () => {
       startBtnBg.clear();
-      startBtnBg.fillStyle(0xff1a75, 1);
-      startBtnBg.fillRoundedRect(width / 2 - 120, 460, 240, 55, 10);
+      startBtnBg.fillStyle(0xff2277, 1);
+      startBtnBg.fillRoundedRect(btnX - btnW / 2, btnY - btnH / 2, btnW, btnH, 8);
       startText.setScale(1.05);
       audio.playPunch('light');
     });
@@ -146,28 +151,26 @@ export default class MenuScene extends Phaser.Scene {
     startZone.on('pointerout', () => {
       startBtnBg.clear();
       startBtnBg.fillStyle(0xff0055, 1);
-      startBtnBg.fillRoundedRect(width / 2 - 120, 460, 240, 55, 10);
+      startBtnBg.fillRoundedRect(btnX - btnW / 2, btnY - btnH / 2, btnW, btnH, 8);
       startText.setScale(1.0);
     });
 
     startZone.on('pointerdown', () => {
       audio.init();
       audio.playBell();
-      
-      // Flash camera
-      this.cameras.main.flash(400, 255, 255, 255);
-      
-      // Delay transition to let bell play
-      this.time.delayedCall(400, () => {
+      this.cameras.main.flash(350, 255, 255, 255);
+      this.time.delayedCall(350, () => {
         this.scene.start('FightScene');
       });
     });
 
-    // 6. Sound Toggle Button
-    const muteBtnBg = this.add.graphics();
-    muteBtnBg.fillStyle(0x1f2833, 0.8);
-    muteBtnBg.fillRoundedRect(width - 70, 20, 50, 50, 8);
-    
+    // 5. Sound Toggle Button (Top Right)
+    const muteBg = this.add.graphics();
+    muteBg.fillStyle(0x151b26, 0.85);
+    muteBg.lineStyle(2, 0x66fcf1, 0.6);
+    muteBg.fillRoundedRect(width - 70, 20, 50, 50, 8);
+    muteBg.strokeRoundedRect(width - 70, 20, 50, 50, 8);
+
     const muteIcon = this.add.text(width - 45, 45, '🔊', {
       font: '24px Outfit'
     }).setOrigin(0.5);
@@ -180,13 +183,11 @@ export default class MenuScene extends Phaser.Scene {
       if (active) audio.playPunch('light');
     });
 
-    // 7. Footer Credits
-    this.add.text(width / 2, height - 25, 'ROUND 1: APPRENTICE | ROUND 2: ADAPTIVE | ROUND 3: CHAMPION', {
-      fontFamily: '"Outfit"',
-      fontSize: '13px',
-      color: '#66fcf1',
-      fontWeight: 'bold',
-      letterSpacing: '1px'
+    // 6. Footer
+    this.add.text(width / 2, height - 25, 'ROUND 1: APPRENTICE • ROUND 2: ADAPTIVE • ROUND 3: CHAMPION', {
+      fontFamily: '"Press Start 2P"',
+      fontSize: '9px',
+      color: '#66fcf1'
     }).setOrigin(0.5);
   }
 }

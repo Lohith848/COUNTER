@@ -9,7 +9,11 @@ const config = {
   width: 1280,
   height: 720,
   parent: 'app',
-  backgroundColor: '#0b0c10',
+  // Transparent canvas: the FightScene renders its 3D ring with Three.js in a
+  // layer below this canvas (see index.html #three-layer), while menus, HUD,
+  // floating texts and 2D effects paint on top of it.
+  transparent: true,
+  backgroundColor: 'rgba(0, 0, 0, 0)',
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
@@ -26,3 +30,8 @@ const config = {
 
 // Create the game instance
 const game = new Phaser.Game(config);
+
+// Debug/automation hook (harmless in production)
+if (typeof window !== 'undefined') {
+  window.__game = game;
+}
