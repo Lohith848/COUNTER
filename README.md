@@ -6,7 +6,7 @@ Play as **Akira** and fight **Ryuga**, the adaptive AI champion who counters you
 
 ---
 
-## 🥊 Features
+## Features
 
 1. **High-Fidelity Procedural 3D Characters (`src/three3d/Boxer3D.js`)**
    - Anatomical muscular body (pecs, abs, deltoids, biceps, quads, calves).
@@ -40,7 +40,7 @@ Play as **Akira** and fight **Ryuga**, the adaptive AI champion who counters you
 
 ---
 
-## 🎮 Controls
+## Controls
 
 | Action | Desktop Keyboard | Mobile Touch |
 | :--- | :--- | :--- |
@@ -56,7 +56,7 @@ Play as **Akira** and fight **Ryuga**, the adaptive AI champion who counters you
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```text
 ├── src/
@@ -86,7 +86,7 @@ Play as **Akira** and fight **Ryuga**, the adaptive AI champion who counters you
 
 ---
 
-## 🛠️ Development & Build
+## Development & Build
 
 ```bash
 # Install dependencies
