@@ -1,4 +1,4 @@
-# Counter — 90s Retro Arcade 3D Boxing Game
+# Counter — 90's Retro Arcade 3D Boxing Game
 
 A fully playable 90s Retro Arcade 3D boxing game built on **Three.js** and **Phaser 4**. Features high-fidelity procedural 3D anatomical characters with realistic boxing kinematics (footwork, jabs, hooks, uppercuts, special moves, slips, blocks, and 10-count knockdowns), a 100% procedural 3D championship arena with dynamic lighting and camera flashbulbs, and retro arcade synthesizer audio.
 
